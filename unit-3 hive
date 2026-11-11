@@ -1,0 +1,173 @@
+UNIT-III: Data Processing Using Hive
+
+Part A: Create a Table in Hive
+Open the Hive command line and execute:
+
+```sql
+CREATE TABLE user_data (
+    data_date STRING,
+    user_id STRING,
+    properties STRING
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+```
+Explanation:
+- `data_date`: Stores the date.
+- `user_id`: Stores the user's ID.
+- `properties`: Stores attributes such as age, state, and gender.
+- `FIELDS TERMINATED BY ','`: Separates the three columns using commas.
+
+
+Insert sample data
+```sql
+INSERT INTO TABLE user_data VALUES
+('2026-01-01', 'U101', 'Age=21;state=CA;gender=M'),
+('2026-01-02', 'U102', 'Age=25;state=NY;gender=F'),
+('2026-01-03', 'U103', 'Age=21;state=CA;gender=F'),
+('2026-01-04', 'U104', 'Age=30;state=TX;gender=M'),
+('2026-01-05', 'U105', 'Age=25;state=NY;gender=M'),
+('2026-01-06', 'U106', 'Age=35;state=CA;gender=F');
+```
+
+Check the data:
+
+```sql
+SELECT * FROM user_data;
+```
+-------------------------------------------------------------------
+## Part B: Find Minimum, Maximum, and Unique Values of Properties
+
+```sql
+CREATE VIEW extracted_data AS
+SELECT
+    data_date,
+    user_id,
+    CAST(REGEXP_EXTRACT(properties, 'Age=([^;]+)', 1) AS INT) AS age,
+    REGEXP_EXTRACT(properties, 'state=([^;]+)', 1) AS state,
+    REGEXP_EXTRACT(properties, 'gender=([^;]+)', 1) AS gender
+FROM user_data;
+```
+then
+
+```sql
+SELECT * FROM extracted_data;
+```
+
+### 3. Calculate minimum, maximum, and unique values
+
+```sql
+SELECT
+    'Age' AS property,
+    MIN(age) AS min_value,
+    MAX(age) AS max_value,
+    COUNT(DISTINCT age) AS unique_values
+FROM extracted_data;
+```
+
+**State statistics:**
+
+```sql
+SELECT
+    'State' AS property,
+    MIN(state) AS min_value,
+    MAX(state) AS max_value,
+    COUNT(DISTINCT state) AS unique_values
+FROM extracted_data;
+```
+
+**Gender statistics:**
+
+```sql
+SELECT
+    'Gender' AS property,
+    MIN(gender) AS min_value,
+    MAX(gender) AS max_value,
+    COUNT(DISTINCT gender) AS unique_values
+FROM extracted_data;
+```
+--------------------------------------------------------------------------
+## Part C: Generate the Count Per State
+
+### 2. HiveQL program
+
+```sql
+SELECT
+    state,
+    COUNT(*) AS state_count
+FROM extracted_data
+GROUP BY state
+ORDER BY state;
+```
+
+--------------------------------------------------------------------------
+## Part D: Prepare the Data in HDFS
+
+Your lab instructions mention executing the preparation step before processing the data. The following is a basic way to upload a CSV file into HDFS.
+
+### Step 1: Create a CSV file
+
+Create `user_data.csv` with the following content:
+
+```text
+2026-01-01,U101,Age=21;state=CA;gender=M
+2026-01-02,U102,Age=25;state=NY;gender=F
+2026-01-03,U103,Age=21;state=CA;gender=F
+2026-01-04,U104,Age=30;state=TX;gender=M
+2026-01-05,U105,Age=25;state=NY;gender=M
+2026-01-06,U106,Age=35;state=CA;gender=F
+```
+
+### Step 2: Create an HDFS directory
+
+Run this command in the Linux terminal:
+
+```bash
+hdfs dfs -mkdir -p /user/hive/input
+```
+
+### Step 3: Upload the CSV file
+
+```bash
+hdfs dfs -put user_data.csv /user/hive/input/
+```
+
+### Step 4: Create an external Hive table
+
+Instead of inserting records manually, you can load the CSV directly from HDFS:
+
+```sql
+CREATE EXTERNAL TABLE user_data (
+    data_date STRING,
+    user_id STRING,
+    properties STRING
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION '/user/hive/input';
+```
+
+This table reads the records directly from the HDFS directory.
+
+**Important:** Use either the earlier managed table with `INSERT` statements or this external table approach for the same dataset, not both with the same table name. If you use the external table, continue with the `extracted_data` view and queries from Parts B and C.
+
+---
+
+## Part E: Complete Program Flow
+
+Remember this sequence for your lab exam:
+
+1. **Prepare the data:** Create a CSV file and upload it to HDFS.
+2. **Create the Hive table:** Define the columns `data_date`, `user_id`, and `properties`.
+3. **Load the data:** Make the sample records available in Hive.
+4. **Extract properties:** Use `REGEXP_EXTRACT()` to retrieve age, state, and gender.
+5. **Calculate statistics:** Use `MIN()`, `MAX()`, and `COUNT(DISTINCT ...)`.
+6. **Count records per state:** Use `GROUP BY state` and `COUNT(*)`.
+
+### Result
+
+The HiveQL programs create the user data table, extract the properties from each record, calculate minimum and maximum values and the number of unique values, and generate the record count for each state.
+
+**Viva tip:** HiveQL resembles SQL, but Hive is designed for querying and analyzing large datasets stored in distributed storage systems such as HDFS. Hive is generally classified as a data warehouse system, not a conventional NoSQL database.
