@@ -1,0 +1,113 @@
+UNIT-3 Pig
+
+We created a sample file named:
+simple_logs.txt
+
+google.com    10    100    2026-01-01
+youtube.com   10    150    2026-01-01
+google.com    11    200    2026-01-01
+facebook.com  11     50    2026-01-01
+google.com    10    120    2026-01-02
+youtube.com   10     80    2026-01-02
+The fields in the actual file were separated by tab characters.
+
+Step 1 — Create the HDFS directory
+At the Linux terminal, we ran:
+	hdfs dfs -mkdir -p data/pig/simple_logs
+
+	hdfs dfs -put simple_logs.txt data/pig/simple_logs/
+
+	hdfs dfs -ls data/pig/simple_logs/
+
+-------------------------------------------------------------------
+Step 2 — Create a Pig script
+nano hour_day.pig
+
+logs = LOAD 'data/pig/simple_logs'
+USING PigStorage('\t')
+AS (
+    site:chararray,
+    hour_of_day:int,
+    page_views:int,
+    data_date:chararray
+);
+
+grouped_logs = GROUP logs BY (hour_of_day, data_date);
+
+total_views = FOREACH grouped_logs GENERATE
+    group.hour_of_day AS hour,
+    group.data_date AS date,
+    SUM(logs.page_views) AS total_page_views;
+
+DUMP total_views;
+
+-------------------------------------------------------------------
+views_per_day.pig
+
+```pig
+logs = LOAD 'data/pig/simple_logs'
+USING PigStorage('\t')
+AS (
+    site:chararray,
+    hour_of_day:int,
+    page_views:int,
+    data_date:chararray
+);
+
+grouped_logs = GROUP logs BY data_date;
+
+daily_views = FOREACH grouped_logs GENERATE
+    group AS date,
+    SUM(logs.page_views) AS total_page_views;
+
+DUMP daily_views;
+```
+-------------------------------------------------------------------
+views_per_hour.pig
+
+```pig
+logs = LOAD 'data/pig/simple_logs'
+USING PigStorage('\u0001')
+AS (
+    site:chararray,
+    hour_of_day:int,
+    page_views:int,
+    data_date:chararray
+);
+
+grouped_logs = GROUP logs BY hour_of_day;
+
+hourly_views = FOREACH grouped_logs GENERATE
+    group AS hour,
+    SUM(logs.page_views) AS total_page_views;
+
+DUMP hourly_views;
+```
+-------------------------------------------------------------------
+nano input.txt 
+hdfs dfs -mkdir -p data/pig/wordcount
+hdfs dfs -put input.txt data/pig/wordcount/
+
+
+wordcount.pig
+
+```pig
+lines = LOAD 'data/pig/wordcount/input.txt'
+USING TextLoader()
+AS (line:chararray);
+
+words = FOREACH lines GENERATE
+    FLATTEN(TOKENIZE(line)) AS word;
+
+grouped_words = GROUP words BY word;
+
+word_count = FOREACH grouped_words GENERATE
+    group AS word,
+    COUNT(words) AS total_count;
+
+DUMP word_count;
+```
+-------------------------------------------------------------------
+
+to execute
+pig -x mapreduce hour_day.pig
